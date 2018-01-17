@@ -80,9 +80,7 @@ module operator (
     output logic signed [OP_OUT_WIDTH-1:0] out
 );   
     wire [PHASE_ACC_WIDTH-1:0] phase_inc;
-    logic key_on_pulse;
     logic key_on_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK];
-    logic key_off_pulse;
     logic key_off_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK];
     wire [ENV_WIDTH-1:0] env;
     logic signed [OP_OUT_WIDTH-1:0] feedback [NUM_BANKS][NUM_OPERATORS_PER_BANK][2] =
@@ -107,7 +105,7 @@ module operator (
                     .EDGE_LEVEL(1), 
                     .CLK_DLY(1)
                 ) key_on_edge_detect (
-                    .clk_en(1),
+                    .clk_en('1),
                     .in(kon[i][j]), 
                     .edge_detected(key_on_pulse_array[i][j]),
                     .*
@@ -117,7 +115,7 @@ module operator (
                     .EDGE_LEVEL(0), 
                     .CLK_DLY(1)
                 ) key_off_edge_detect (
-                    .clk_en(1),
+                    .clk_en('1),
                     .in(kon[i][j]), 
                     .edge_detected(key_off_pulse_array[i][j]),
                     .*
@@ -177,9 +175,6 @@ module operator (
      (op_type == OP_TOM_TOM && tom_on_pulse) ||
      (op_type == OP_TOP_CYMBAL && tc_on_pulse) ||
      (op_type == OP_HI_HAT && hh_on_pulse);
-    
-    always_comb key_on_pulse = key_on_pulse_array[bank_num][op_num] || rhythm_kon_pulse;
-    always_comb key_off_pulse = key_off_pulse_array[bank_num][op_num];
     
     /*
      * latch_feedback_pulse comes in the last cycle of the time slot so out has had a

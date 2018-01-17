@@ -64,8 +64,8 @@ module envelope_generator #(
     input wire [REG_FNUM_WIDTH-1:0] fnum,
     input wire [REG_MULT_WIDTH-1:0] mult,
     input wire [REG_BLOCK_WIDTH-1:0] block,
-    input wire key_on_pulse,
-    input wire key_off_pulse,
+    input wire key_on_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK],
+    input wire key_off_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK],
     output logic [ENV_WIDTH-1:0] env = SILENCE
 );
     localparam KSL_ADD_WIDTH = 8;
@@ -99,13 +99,21 @@ module envelope_generator #(
         .*
     );
     
-    always_ff @(posedge clk)
-        if (key_on_pulse)
-            state[bank_num][op_num] <= ATTACK;
-        else if (key_off_pulse)
-            state[bank_num][op_num] <= RELEASE;
-        else if (sample_clk_en)
-            state[bank_num][op_num] <= next_state;
+    genvar i, j;
+    generate
+        for (i = 0; i < NUM_BANKS; i ++)
+            for (j = 0; j < NUM_OPERATORS_PER_BANK; j++) 
+                /*
+                 * Key-on and Key-off pulses can occur between samples
+                 */
+                always_ff @(posedge clk)
+                    if (key_on_pulse_array[i][j])
+                        state[i][j] <= ATTACK;
+                    else if (key_off_pulse_array[i][j])
+                        state[i][j] <= RELEASE;
+                    else if (sample_clk_en && i == bank_num && j == op_num)
+                        state[i][j] <= next_state;
+    endgenerate
         
     always_comb
         unique case (state[bank_num][op_num])

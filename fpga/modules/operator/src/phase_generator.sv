@@ -52,7 +52,7 @@ module phase_generator (
     input wire [PHASE_ACC_WIDTH-1:0] phase_inc,
     input wire [REG_WS_WIDTH-1:0] ws,
     input wire [ENV_WIDTH-1:0] env,
-    input wire key_on_pulse,
+    input wire key_on_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK],
     input wire [OP_OUT_WIDTH-1:0] modulation,
     input operator_t op_type,    
     output logic signed [OP_OUT_WIDTH-1:0] out = 0
@@ -103,32 +103,38 @@ module phase_generator (
         .*
     );
         
-    /*
-     * Phase Accumulator. Modulation gets added to the final phase but not
-     * back into the accumulator.
-     */
-    always_ff @(posedge clk)
-        if (sample_clk_en_delayed[PIPELINE_DELAY-1])
-            if (key_on_pulse) begin
-                phase_acc[bank_num][op_num] <= 0;
-                final_phase[bank_num][op_num] <= 0;
-            end
-            else if (ws_post_opl == 4 || ws_post_opl == 5) begin
-                // double the frequency
-                phase_acc[bank_num][op_num] <= phase_acc[bank_num][op_num] + (phase_inc << 1);
-                final_phase[bank_num][op_num] <= rhythm_phase + (phase_inc << 1)
-                 + (modulation << 10);
-            end    
-            else begin
-                phase_acc[bank_num][op_num] <= phase_acc[bank_num][op_num] + phase_inc;
-                final_phase[bank_num][op_num] <= rhythm_phase + phase_inc
-                 + (modulation << 10);
-            end    
+    genvar i, j;
+    generate
+        for (i = 0; i < NUM_BANKS; i ++)
+            for (j = 0; j < NUM_OPERATORS_PER_BANK; j++) 
+                
+                /*
+                 * Phase Accumulator. Modulation gets added to the final phase but not
+                 * back into the accumulator.
+                 */                                
+                always_ff @(posedge clk)
+                    if (key_on_pulse_array[i][j]) begin
+                        // Key-on pulses can occur between samples                                             
+                        phase_acc[i][j] <= 0;
+                        final_phase[i][j] <= 0;
+                    end
+                    else if (sample_clk_en_delayed[PIPELINE_DELAY-1] && i == bank_num && j == op_num)
+                        if (ws_post_opl == 4 || ws_post_opl == 5) begin
+                            // double the frequency
+                            phase_acc[i][j] <= phase_acc[i][j] + (phase_inc << 1);
+                            final_phase[i][j] <= rhythm_phase + (phase_inc << 1)
+                             + (modulation << 10);
+                        end    
+                        else begin
+                            phase_acc[i][j] <= phase_acc[i][j] + phase_inc;
+                            final_phase[i][j] <= rhythm_phase + phase_inc
+                             + (modulation << 10);
+                        end 
+    endgenerate            
         
     always_comb tmp_ws2 = tmp_out1 < 0 ? ~tmp_out1 : tmp_out1;
     always_comb tmp_ws4 = is_odd_period[bank_num][op_num] ? tmp_out1 : 0;
     
-    genvar i, j;
     generate
     for (i = 0; i < NUM_BANKS; i ++) 
         for (j = 0; j < NUM_OPERATORS_PER_BANK; j++) begin

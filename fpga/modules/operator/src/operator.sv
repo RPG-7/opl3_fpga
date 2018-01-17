@@ -81,9 +81,9 @@ module operator (
 );   
     wire [PHASE_ACC_WIDTH-1:0] phase_inc;
     logic key_on_pulse;
-    wire key_on_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK];
+    logic key_on_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK];
     logic key_off_pulse;
-    wire key_off_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK];
+    logic key_off_pulse_array [NUM_BANKS][NUM_OPERATORS_PER_BANK];
     wire [ENV_WIDTH-1:0] env;
     logic signed [OP_OUT_WIDTH-1:0] feedback [NUM_BANKS][NUM_OPERATORS_PER_BANK][2] =
      '{default: 0};
@@ -98,16 +98,16 @@ module operator (
     
     genvar i, j;
     generate
-        for (i = 0; i < NUM_BANKS; i ++) 
-            for (j = 0; j < NUM_OPERATORS_PER_BANK; j++) begin 
+        for (i = 0; i < NUM_BANKS; i ++)
+            for (j = 0; j < NUM_OPERATORS_PER_BANK; j++) begin             
                 /*
-                 * Detect key on and key off
+                 * Detect key on and key off. They can occur between samples.
                  */
                 edge_detector #(
                     .EDGE_LEVEL(1), 
                     .CLK_DLY(1)
                 ) key_on_edge_detect (
-                    .clk_en(i == bank_num && j == op_num && sample_clk_en),
+                    .clk_en(1),
                     .in(kon[i][j]), 
                     .edge_detected(key_on_pulse_array[i][j]),
                     .*
@@ -117,12 +117,12 @@ module operator (
                     .EDGE_LEVEL(0), 
                     .CLK_DLY(1)
                 ) key_off_edge_detect (
-                    .clk_en(i == bank_num && j == op_num && sample_clk_en && op_type == OP_NORMAL),
+                    .clk_en(1),
                     .in(kon[i][j]), 
                     .edge_detected(key_off_pulse_array[i][j]),
                     .*
-                );                                   
-            end            
+                );                               
+            end
     endgenerate  
     
     edge_detector #(

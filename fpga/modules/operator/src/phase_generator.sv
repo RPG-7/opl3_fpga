@@ -66,8 +66,6 @@ module phase_generator (
     typedef struct packed {
         logic [PHASE_ACC_WIDTH-1:0] phase_acc;
         logic [PHASE_ACC_WIDTH-1:0] final_phase;
-        logic is_odd_period;
-        logic phase_acc_msb_pos_edge_pulse;
     } logic_reduction_saved_values_t;
 
     logic [PIPELINE_DELAY-1:0] sample_clk_en_delayed = 0;
@@ -75,8 +73,8 @@ module phase_generator (
     logic [PHASE_ACC_WIDTH-1:0] final_phase = 0;
     logic [PHASE_ACC_WIDTH-1:0] rhythm_phase;
 
-    logic is_odd_period = 0;
-    logic phase_acc_msb_pos_edge_pulse;
+    logic is_odd_period [NUM_BANKS][NUM_OPERATORS_PER_BANK] = '{ default: '0 };
+    logic phase_acc_msb_pos_edge_pulse [NUM_BANKS][NUM_OPERATORS_PER_BANK];
     wire [LOG_SIN_OUT_WIDTH-1:0] log_sin_out;
     logic [LOG_SIN_PLUS_GAIN_WIDTH-1:0] log_sin_plus_gain = 0;
     wire [EXP_OUT_WIDTH-1:0] exp_out;
@@ -91,17 +89,18 @@ module phase_generator (
     logic op_num_r0 = 0;
     logic_reduction_saved_values_t in_values;
     logic_reduction_saved_values_t out_values;
+    logic load_store_ram_values;
 
     always_ff @(posedge clk) begin
         bank_num_r0 <= bank_num;
         op_num_r0 <= op_num;
     end
 
+    always_comb load_store_ram_values = op_num_r0 != op_num;
+
     always_comb begin
         in_values.phase_acc = phase_acc;
         in_values.final_phase = final_phase;
-        in_values.is_odd_period = is_odd_period;
-        in_values.phase_acc_msb_pos_edge_pulse = phase_acc_msb_pos_edge_pulse;
     end
 
     mem_simple_dual_port_distributed #(
@@ -111,7 +110,7 @@ module phase_generator (
     ) logic_reduction_ram (
         .clka(clk),
         .clkb(clk),
-        .wea(sample_clk_en),
+        .wea(load_store_ram_values),
         .reb('1),
         .addra({bank_num_r0, op_num_r0}),
         .addrb({bank_num, op_num}),
@@ -146,7 +145,11 @@ module phase_generator (
      * back into the accumulator.
      */
     always_ff @(posedge clk)
-        if (sample_clk_en_delayed[PIPELINE_DELAY-1])
+        if (load_store_ram_values) begin
+            phase_acc <= out_values.phase_acc;
+            final_phase <= out_values.final_phase;
+        end
+        else if (sample_clk_en_delayed[PIPELINE_DELAY-1])
             if (key_on_pulse) begin
                 phase_acc <= 0;
                 final_phase <= 0;
@@ -164,41 +167,27 @@ module phase_generator (
             end
 
     always_comb tmp_ws2 = tmp_out1 < 0 ? ~tmp_out1 : tmp_out1;
-    always_comb tmp_ws4 = is_odd_period ? tmp_out1 : 0;
+    always_comb tmp_ws4 = is_odd_period[bank_num][op_num] ? tmp_out1 : 0;
 
-//    genvar i, j;
-//    generate
-//    for (i = 0; i < NUM_BANKS; i ++)
-//        for (j = 0; j < NUM_OPERATORS_PER_BANK; j++) begin
-//            edge_detector #(
-//                .EDGE_LEVEL(0),
-//                .CLK_DLY(0)
-//            ) phase_acc_msb_edge_detect (
-//                .clk,
-//                .clk_en(1'b1),
-//                .in(final_phase[19]),
-//                .edge_detected(phase_acc_msb_pos_edge_pulse[i][j])
-//            );
-//
-//        always_ff @(posedge clk)
-//            if (phase_acc_msb_pos_edge_pulse[i][j])
-//                is_odd_period[i][j] <= !is_odd_period[i][j];
-//    end
-//    endgenerate
+    genvar i, j;
+    generate
+    for (i = 0; i < NUM_BANKS; i ++)
+        for (j = 0; j < NUM_OPERATORS_PER_BANK; j++) begin
+            edge_detector #(
+                .EDGE_LEVEL(0),
+                .CLK_DLY(0)
+            ) phase_acc_msb_edge_detect (
+                .clk,
+                .clk_en(1'b1),
+                .in(final_phase[19]),
+                .edge_detected(phase_acc_msb_pos_edge_pulse[i][j])
+            );
 
-    edge_detector #(
-        .EDGE_LEVEL(0),
-        .CLK_DLY(0)
-    ) phase_acc_msb_edge_detect (
-        .clk,
-        .clk_en(1'b1),
-        .in(final_phase[19]),
-        .edge_detected(phase_acc_msb_pos_edge_pulse)
-    );
-
-    always_ff @(posedge clk)
-        if (phase_acc_msb_pos_edge_pulse)
-            is_odd_period <= !is_odd_period;
+        always_ff @(posedge clk)
+            if (phase_acc_msb_pos_edge_pulse[i][j])
+                is_odd_period[i][j] <= !is_odd_period[i][j];
+    end
+    endgenerate
 
     opl3_log_sine_lut log_sine_lut_inst (
         .theta(final_phase[18] ? ~final_phase[17:10]

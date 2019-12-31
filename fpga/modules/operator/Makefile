@@ -10,7 +10,8 @@ RTL_SRC = \
 	src/ksl_add_rom.sv \
 	src/tremolo.sv \
 	../clks/src/clk_div.sv \
-	../misc/src/edge_detector.sv
+	../misc/src/edge_detector.sv \
+	../misc/src/mem_simple_dual_port_distributed.sv
 	
 SIM_SRC = \
 	sim/operator_tb.sv \

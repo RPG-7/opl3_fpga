@@ -1,14 +1,27 @@
 opl3_fpga
 =========
+## News
+2019-11-7
+* The OPL2 subset of OPL3_FPGA was converted to Verilog by Magnus Karlsson, and then ported to the Panologic thin client (a Spartan-3E based board) by Skip Hansen. The project can be found here: https://github.com/skiphansen/panog1_opl3
+
+2018-1-7
+* The FPGA and imfplay software build flows have been tested on Vivado 2017.4. No changes are necessary.
+* Walter van Niftrik's work on the ScummVM/DOSBox projects and PetaLinux daemon <a href="https://github.com/waltervn/opl3_fpga-apps">allowing the OPL3-FPGA to be used as a realtime output device</a> for both emulators is really cool. I've updated everything for Vivado/PetaLinux 2017.4, and I'll be updating my fork soon. I'll also include prebuilt binary SD card images for people to easily take advantage of it without having to setup a build environment, and a YouTube demo so you can see how cool it is.
+
+2016-6-11
+* FPGA and software build flows have been updated for Vivado 2016.1.
+* I have been working with one of the ScummVM devs, Walter van Niftrik, to use the OPL3_FPGA as an OPL3 output device in ScummVM and DOSBox over USB. His code is over at https://github.com/waltervn/opl3_fpga-apps and https://github.com/waltervn/dosbox. He has a daemon running on top of PetaLinux instead of bare metal on the ARM. This is very cool and something I always envisioned.
+
+## About            
 Reverse engineered SystemVerilog RTL version of the 
 <a href="http://en.wikipedia.org/wiki/Yamaha_YMF262">Yamaha OPL3 (YMF262)</a> FM Synthesizer.
-Design is complete and working on the Digilent ZYBO board. The software needs a bit of cleaning up.
+Design is complete and working on the Digilent ZYBO board.
 
 Hear it in action:
 * https://www.youtube.com/watch?v=KoSF4ZoDuRI
 * https://www.youtube.com/watch?v=i9vEKyJScYw
 
-Every effort possible has been made to replicate, bit-true, the math of the original OPL3 chip. Several other very smart people put in a lot of work before me to get as close as possible this goal in software, and this FPGA design would not be possible without their work. Their efforts included <a href="https://docs.google.com/document/d/18IGx18NQY_Q1PJVZ-bHywao9bhsDoAqoIn1rIm42nwo/edit">de-lidding the chip to extract the actual values out of the ROMs</a> and <a href="https://github.com/gtaylormb/opl3_fpga/blob/master/docs/opl3math/opl3math.pdf">in-dept analysis of the math involved</a>. They're all over at http://forums.submarine.org.uk/phpBB/viewforum.php?f=9. You can follow the progression of some of the reverse engineering--it's quite interesting.
+Every effort possible has been made to replicate, bit-true, the math of the original OPL3 chip. Several other very smart people put in a lot of work before me to get as close as possible to this goal in software, and this FPGA design would not be possible without their work. Their efforts included <a href="https://docs.google.com/document/d/18IGx18NQY_Q1PJVZ-bHywao9bhsDoAqoIn1rIm42nwo/edit">de-lidding the chip to extract the actual values out of the ROMs</a> and <a href="https://github.com/gtaylormb/opl3_fpga/blob/master/docs/opl3math/opl3math.pdf">in-dept analysis of the math involved</a>. They're all over at http://forums.submarine.org.uk/phpBB/viewforum.php?f=9. You can follow the progression of some of the reverse engineering--it's quite interesting.
 
 There are some differences between this version and the original chip in the external interface due to the hardware on
 the board that I'm using. The design is targeted to the <a href="https://www.digilentinc.com/Products/Detail.cfm?Prod=ZYBO">Digilent ZYBO board</a>
@@ -34,7 +47,7 @@ As far as software, so far I've ported over <a href="http://software.kvee.cz/imf
 
 In doing the project, I was very impressed with what the original chip designers were able to accomplish. They used some very clever techniques to squeeze maximum functionality out of very limited resources--particularly using the combination of an exponential lookup table and a log-sine lookup table to <a href="https://github.com/gtaylormb/opl3_fpga/blob/master/docs/opl3math/opl3math.pdf">apply gain to the sine wave without the use of multipliers</a>, and the clever use of time sharing the operator resources among 36 slots.
 
-Tools used are Modelsim, Vivado 2015.1, Octave (for sample analysis), and SVEditor (for SystemVerilog file editing).
+Tools used are Modelsim, Vivado 2016.1, Octave (for sample analysis), and SVEditor (for SystemVerilog file editing).
 
 ## Digital waveform images
 These were produced by writing the actual binary output values of the operator logic in simulation to a file and plotting them using Octave.
@@ -74,16 +87,16 @@ Close up of the attack phase:
     +----------------------------+-------+-------+-----------+-------+
     |          Site Type         |  Used | Fixed | Available | Util% |
     +----------------------------+-------+-------+-----------+-------+
-    | Slice LUTs                 |  6450 |     0 |     17600 | 36.65 |
-    |   LUT as Logic             |  6384 |     0 |     17600 | 36.27 |
-    |   LUT as Memory            |    66 |     0 |      6000 |  1.10 |
+    | Slice LUTs                 |  6042 |     0 |     17600 | 34.33 |
+    |   LUT as Logic             |  5972 |     0 |     17600 | 33.93 |
+    |   LUT as Memory            |    70 |     0 |      6000 |  1.17 |
     |     LUT as Distributed RAM |     0 |     0 |           |       |
-    |     LUT as Shift Register  |    66 |     0 |           |       |
-    | Slice Registers            | 10230 |     0 |     35200 | 29.06 |
-    |   Register as Flip Flop    | 10230 |     0 |     35200 | 29.06 |
+    |     LUT as Shift Register  |    70 |     0 |           |       |
+    | Slice Registers            | 10105 |     0 |     35200 | 28.71 |
+    |   Register as Flip Flop    | 10105 |     0 |     35200 | 28.71 |
     |   Register as Latch        |     0 |     0 |     35200 |  0.00 |
-    | F7 Muxes                   |   897 |     0 |      8800 | 10.19 |
-    | F8 Muxes                   |   252 |     0 |      4400 |  5.73 |
+    | F7 Muxes                   |   837 |     0 |      8800 |  9.51 |
+    | F8 Muxes                   |   126 |     0 |      4400 |  2.86 |
     +----------------------------+-------+-------+-----------+-------+
     
     +-------------------+------+-------+-----------+-------+
@@ -138,8 +151,7 @@ They will be included in the in-memory filesystem for playback.
 2. Source the Vivado and SDK settings so all the build tools are in your path.
 Example: 
 
-        source /opt/Xilinx/Vivado/2015.1/settings64.sh
-        source /opt/Xilinx/SDK/2015.1/settings64.sh
+        source /opt/Xilinx/Vivado/2016.1/settings64.sh
       
 3. Run 'make' to build the FPGA and software necessary to run the OPL3
 and create an SD card image.
@@ -161,9 +173,3 @@ and create an SD card image.
 
 Enjoy!
 
-## Future work
-I'd really love to make the board appear as a USB peripheral when plugged into PC. If DOSBox/ScummVM could be made aware of the device, they could direct all OPL3 writes to the board. Digital PCM output could be made available as well.
-
-Another idea is to port DOSBox/ScummVM directly to the ARM CPU on the board.
-
-Let me know if you have other ideas or are interested into doing either of these projects, I'll help out as much as I can.

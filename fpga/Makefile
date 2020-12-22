@@ -68,6 +68,7 @@ RTL_SRC = \
 	modules/timers/src/timer.sv \
 	modules/misc/src/edge_detector.sv \
 	modules/misc/src/mem_simple_dual_port_distributed.sv \
+	modules/misc/src/mult_signed.sv \
     modules/register_file/src/register_file_axi.sv
 	
 SIM_SRC = \
